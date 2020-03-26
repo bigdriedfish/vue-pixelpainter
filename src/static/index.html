@@ -45,8 +45,8 @@
 					value:'#0000ff'
 				}],
 				color:'#ff0000',
-				width:0,
-				height:0,
+				width:256,
+				height:256,
 				isPickingColor:false,
 			}
 		},
@@ -86,33 +86,33 @@
 			this.ws = ws
 
 			var canvas = this.$refs.canvas
-			//放大不失真
+			//canvas放大不失真
 			canvas.style.imageRendering = 'pixelated'
 
 			var ctx = canvas.getContext('2d')
 			this.ctx = ctx
 
-			ws.onmessage = ({data}) => {
-				data = JSON.parse(data)
-				if (data.type == 'init') {
-					//this.pixelData = data.pixelData
-					this.width = data.pixelData[0].length
-					this.height = data.pixelData.length
+			ws.onmessage = (e) => {
+				var data = e.data
 
-					Vue.nextTick(() => {
-						data.pixelData.forEach((row, y) => {
-							row.forEach((color, x) => {
-								ctx.fillStyle = color
-								ctx.fillRect(x, y, 1, 1)
-							})
-						});
-					})
-				}	else if (data.type == 'updateDot') {
+
+				if (Object.prototype.toString.call(data) === '[object Blob]') {
 					
-					ctx.fillStyle = data.color
-					ctx.fillRect(data.x, data.y, 1, 1)
+					var tmpUrl = URL.createObjectURL(data)
+					var image = new Image()
+					image.src = tmpUrl 
+					image.onload = () => {
+						//获取图片地址马上画上去很困难，加个异步延迟执行
+						ctx.drawImage(image, 0, 0)
+					}
+				} else {
+					data = JSON.parse(data)
+					if (data.type == 'updateDot') {
+							ctx.fillStyle = data.color
+							ctx.fillRect(data.x, data.y, 1, 1)
+					}
 				}
-			}
+			}		
 		}
 	})
 	//问题一 canvas 放大发虚
