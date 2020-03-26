@@ -10,25 +10,15 @@
 			/* display: inline-block; */
 			width:max-content
 		}
-		.row {
-			display: flex;
-		}
-		.dot {
-			width: 10px;
-			height: 10px;
-			border:2px solid;
-		}
+		
 	</style>
 </head>
 <body>
 	<div id="app">
 		<div class="canvas">
-			<div class="row" v-for="(row,y) in pixelData">
-				<span class="dot" @click="drawDot(x,y,color)" v-for="(dotColor,x) in row" :style="{background: dotColor}">
-					
-				</span>
-			</div>
+			<canvas @click="drawDot" ref="canvas" :width="width" :height="height"></canvas>
 		</div>
+		<input type="color" v-model="color">
 		<label :style="{color:c}" v-for="c in commonColors">
 			<input type="radio" v-model="color"  :value="c">{{c}}
 		</label>
@@ -44,13 +34,17 @@
 				pixelData: [],
 				commonColors:['red','green','blue'],
 				color:'red',
+				width:0,
+				height:0,
 			}
 		},
 		methods: {
-			drawDot(x,y,color) {
+			drawDot(e) {
 				this.ws.send(JSON.stringify({
 					type:'drawDot',
-					x,y,color,
+					x:e.layerX,
+					y:e.layerY,
+					color:this.color,
 				}))
 			}
 		},
@@ -58,15 +52,33 @@
 			var ws = new WebSocket('ws:localhost:9095/pixel')
 			this.ws = ws
 
+			var canvas = this.$refs.canvas
+			var ctx = canvas.getContext('2d')
+			
+
 			ws.onmessage = ({data}) => {
 				data = JSON.parse(data)
 				if (data.type == 'init') {
-					this.pixelData = data.pixelData
+					//this.pixelData = data.pixelData
+					this.width = data.pixelData[0].length
+					this.height = data.pixelData.length
+
+					Vue.nextTick(() => {
+						data.pixelData.forEach((row, y) => {
+							row.forEach((color, x) => {
+								ctx.fillStyle = color
+								ctx.fillRect(x, y, 1, 1)
+							})
+						});
+					})
 				}	else if (data.type == 'updateDot') {
-					Vue.set(this.pixelData[data.y], data.x,data.color) 
+					
+					ctx.fillStyle = data.color
+					ctx.fillRect(data.x, data.y, 1, 1)
 				}
 			}
 		}
 	})
+	//问题一 canvas 放大发虚
 </script>
 </html>
