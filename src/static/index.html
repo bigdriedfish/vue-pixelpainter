@@ -5,13 +5,28 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>Pixel Painter</title>
 	<style>
-		.canvas {
-			border: 2px solid;
-			display: inline-block; 
-			/* width:max-content */
-			background-color: #fff;
-		}
 		
+		canvas {
+			position: absolute;
+			left: 100px;
+			top: 100px;
+			transform:scale(2);
+			box-shadow: 0 0 5px grey;
+			transform-origin: top left;
+		}
+		.color-card {
+			display: inline-block;
+			width: 22px;
+  		height: 22px;
+  		margin: 1px 4px;
+			border: 1px solid;
+  		border-radius: 5px;
+  		cursor: pointer;
+  		transform-origin: 50% 50%;
+		}
+		.color-card.active {
+			transform: scale(1.2);
+		}
 	</style>
 </head>
 <body>
@@ -19,11 +34,11 @@
 		<div class="canvas">
 			<canvas @click="handleCanvasClick" ref="canvas" :width="width" :height="height"></canvas>
 		</div>
-		<button @click="isPickingColor = true">{{isPickingColor?'正在取色':'取色'}}</button>
+		<button @click="startPickingColor">{{isPickingColor?'正在取色':'取色'}}</button>
 		<input type="color" v-model="color">
-		<label :style="{color:c.value}" v-for="c in commonColors">
-			<input type="radio" v-model="color"  :value="c.value">{{c.name}}
-		</label>
+		<div class="common-colors">
+			<span v-for = "c of commonColors" @click="color = c" :class="{'color-card':true, active:c==color}" :style="{backgroundColor:c}"></span>
+		</div>
 		
 	</div>
 </body>
@@ -34,16 +49,7 @@
 		data() {
 			return {
 				pixelData: [],
-				commonColors:[{
-					name:'red',
-					value: '#ff0000'
-				},{
-					name:'green',
-					value:'#00ff00'
-				},{
-					name:'blue',
-					value:'#0000ff'
-				}],
+				commonColors:["#000000","#ffffff","#aaaaaa","#555555","#fed3c7","#ffc4ce","#faac8e","#f44336","#e91e63","#e2669e"],
 				color:'#ff0000',
 				width:256,
 				height:256,
@@ -51,6 +57,36 @@
 			}
 		},
 		methods: {
+			//取色提示鼠标
+			makeCursorImgUrl(color) {
+				var cursor = document.createElement('canvas')
+				var ctx = cursor.getContext('2d')
+				cursor.width = 41
+				cursor.height = 41
+
+				ctx.beginPath()
+				ctx.lineWidth = 2
+				ctx.strokeStyle = '#000000'
+				ctx.moveTo(0, 6)
+				ctx.lineTo(12, 6)
+				ctx.moveTo(6, 0)
+				ctx.lineTo(6, 12)
+				ctx.stroke()
+
+				ctx.beginPath()
+				ctx.arc(25, 25, 14, 0, 2 * Math.PI, false)
+				ctx.lineWidth = 2
+				ctx.strokeStyle = '#000000'
+				ctx.stroke()
+				ctx.beginPath()
+				ctx.arc(25, 25, 13.4, 0, 2 * Math.PI, false)
+				ctx.fillStyle = color
+				ctx.fill()
+
+				//document.getElementById('canvas').style.cursor = 'crosshair'
+				//document.getElementById('canvas').style.cursor = 'url(' + cursor.toDataURL() + ') 6 6, crosshair'
+				return cursor.toDataURL() 
+			},
 			handleCanvasClick(e) {
 				if (this.isPickingColor) {
 					this.pickColor(e)
@@ -58,31 +94,49 @@
 					this.drawDot(e)
 				}
 			},
+			//颜色转换 将rgb转换成16进制数
 			rgba2hex(dot) {
 				dot = Array.from(dot)
 				dot = dot.map(it => it.toString(16).padStart(2,'0'))
 				return '#' + dot[0] + dot[1] + dot[2]
 			},
-			//取色
-			pickColor(e) {
-				var x = e.layerX
-				var y = e.layerY
+			//鼠标取色提示
+			updateCursor(e) {
+				var color = this.getCurrHoverColor(e)
+				var cursorUrl = this.makeCursorImgUrl(color)
+				this.$refs.canvas.style.cursor = `url(${cursorUrl}) 6 6, crosshair`
+			},
+			startPickingColor() {
+				this.isPickingColor = true
+				this.$refs.canvas.addEventListener('mousemove',this.updateCursor) 
+			},
+			getCurrHoverColor(e) {
+				var x = e.offsetX
+				var y = e.offsetY
 				var p = this.ctx.getImageData(x,y,1,1).data
 				var hexColor = this.rgba2hex(p)
+				return hexColor
+			},
+			//选完色需要取消鼠标事件以及鼠标的取色提示
+			pickColor(e) {
+				var hexColor = this.getCurrHoverColor(e)
 				this.color = hexColor
 				this.isPickingColor = false
+				this.$refs.canvas.removeEventListener('mousemove',this.updateCursor)
+				this.$refs.canvas.style.cursor = ''
 			} ,
+			//将画点数据发送给后端
 			drawDot(e) {
 				this.ws.send(JSON.stringify({
 					type:'drawDot',
-					x:e.layerX,
-					y:e.layerY,
+					x:e.offsetX,
+					y:e.offsetY,
 					color:this.color,
 				}))
 			}
 		},
 		mounted() {
-			var ws = new WebSocket('ws:localhost:9095/pixel')
+			var ws = new WebSocket(`ws://${location.host}/pixel`)//location.host API
 			this.ws = ws
 
 			var canvas = this.$refs.canvas
