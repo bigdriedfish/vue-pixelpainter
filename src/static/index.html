@@ -34,11 +34,11 @@
 		<div class="canvas">
 			<canvas @click="handleCanvasClick" ref="canvas" :width="width" :height="height"></canvas>
 		</div>
-		<button @click="startPickingColor">{{isPickingColor?'正在取色':'取色'}}</button>
+		<button @click="isPickingColor = true">{{isPickingColor?'正在取色':'取色'}}</button>
 		<input type="color" v-model="color">
-		<div class="common-colors">
-			<span v-for = "c of commonColors" @click="color = c" :class="{'color-card':true, active:c==color}" :style="{backgroundColor:c}"></span>
-		</div>
+		<label :style="{color:c.value}" v-for="c in commonColors">
+			<input type="radio" v-model="color"  :value="c.value">{{c.name}}
+		</label>
 		
 	</div>
 </body>
