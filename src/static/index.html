@@ -5,12 +5,17 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>Pixel Painter</title>
 	<style>
-		
+		.canvas-wrapper {
+			border:2px solid;
+			width:max-content;
+			position: relative;
+			width: 256px;
+			height: 256px;
+			overflow: hidden;
+		}
 		canvas {
 			position: absolute;
-			left: 100px;
-			top: 100px;
-			transform:scale(2);
+			/* transform:scale(2); */
 			box-shadow: 0 0 5px grey;
 			transform-origin: top left;
 		}
@@ -31,14 +36,14 @@
 </head>
 <body>
 	<div id="app">
-		<div class="canvas">
-			<canvas @click="handleCanvasClick" ref="canvas" :width="width" :height="height"></canvas>
+		<div class="canvas-wrapper">
+			<canvas @mousedown="prepareDrag" ref="canvas" :width="width" :height="height" style="top:0px;left:0px"></canvas>
 		</div>
 		<button @click="isPickingColor = true">{{isPickingColor?'正在取色':'取色'}}</button>
 		<input type="color" v-model="color">
-		<label :style="{color:c.value}" v-for="c in commonColors">
-			<input type="radio" v-model="color"  :value="c.value">{{c.name}}
-		</label>
+		<div class="common-colors">
+			<span v-for=" c of commonColors" @click="color = c" :class="{'color-card':true, active:c==color}" :style="{backgroundColor:c}"></span>
+		</div>
 		
 	</div>
 </body>
@@ -54,9 +59,46 @@
 				width:256,
 				height:256,
 				isPickingColor:false,
+				zoomFactor:1,
 			}
 		},
 		methods: {
+			//拖拽功能
+			prepareDrag(e) {
+				var canvas = this.$refs.canvas
+				var startX = e.clientX
+				var startY = e.clientY
+				var posX = parseInt(canvas.style.left)
+				var posY = parseInt(canvas.style.top)
+				var moveHandler
+				var upHandler
+
+				var moved = false
+				// canvas.removeEventListener('click', this.handleCanvasClick)
+				canvas.addEventListener('mousemove', moveHandler = e => {
+					
+					var currX = e.clientX
+					var currY = e.clientY
+					var diffX = currX - startX
+					var diffY = currY - startY
+					if (diffX > 1 && diffY > 1) {
+						moved  = true
+					}
+					canvas.style.left = posX + diffX + 'px'
+					canvas.style.top = posX + diffY + 'px'
+				})
+				canvas.addEventListener('mouseup', upHandler = e => {
+					canvas.removeEventListener('mousemove', moveHandler)
+					canvas.removeEventListener('mouseup', upHandler)
+					if (!moved) {
+						this.handleCanvasClick(e)
+					}
+
+					// Vue.nextTick(() => {
+					// 	canvas.addEventListener('click',this.handleCanvasClick)
+					// })
+				})
+			},
 			//取色提示鼠标
 			makeCursorImgUrl(color) {
 				var cursor = document.createElement('canvas')
@@ -127,20 +169,51 @@
 			} ,
 			//将画点数据发送给后端
 			drawDot(e) {
+				var clientX = e.clientX//鼠标相对视口的位置
+				var clientY = e.clientY
+				var rect = this.$refs.canvas.getBoundingClientRect()//返回元素的大小及其相对于视口的位置
+				var x = (clientX - rect.left) / this.zoomFactor
+				var y = (clientY - rect.top) / this.zoomFactor
+
 				this.ws.send(JSON.stringify({
 					type:'drawDot',
-					x:e.offsetX,
-					y:e.offsetY,
+					x:parseInt(x),//e.offsetX,
+					y:parseInt(y),//e.offsetY,
 					color:this.color,
 				}))
+			},
+			//滚轮放大缩小
+			initZoom() {
+				var canvas = this.$refs.canvas
+				canvas.parentNode.addEventListener('mousewheel', (e) => {
+					e.preventDefault()
+					if (e.deltaY < 0) {
+						this.zoomFactor = this.zoomFactor * 1.25
+					}	else {
+						this.zoomFactor = this.zoomFactor * 0.8
+					} 
+					if (this.zoomFactor < 1) {
+						this.zoomFactor = 1
+					} 
+					if (this.zoomFactor > 10) {
+						this.zoomFactor = this.zoomFactor * 0.8
+					}
+					if (this.zoomFactor == 1) {
+						canvas.style.left = '0px'
+						canvas.style.top = '0px'
+					}
+					canvas.style.transform = `scale(${this.zoomFactor})`
+				})
 			}
 		},
 		mounted() {
+			this.initZoom()
 			var ws = new WebSocket(`ws://${location.host}/pixel`)//location.host API
 			this.ws = ws
 
 			var canvas = this.$refs.canvas
 			//canvas放大不失真
+			// canvas.addEventListener('click',this.handleCanvasClick)
 			canvas.style.imageRendering = 'pixelated'
 
 			var ctx = canvas.getContext('2d')
