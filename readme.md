@@ -1,9 +1,18 @@
-* websocket
-* express
-* socket.io
-* image pixel manipulation
-* png transport
-* don't save if didn't change
-* Vue
-* 放大
-* 取色提示
+# Pixel Painter
+
+# 功能列表
+* 使用canvas绘制，以节省内存提升性能
+* 使用websocket进行实时传输
+* 使用express构建HTTP服务器
+* 使用ws模块构建websocket后端并且express集成
+* 后端使用buffer保存图片实时数据
+* 后端自动保存图片状态，服务器重启也不会丢失
+* 首次打开页面时，后端将图片转为png编码传给前端，以节省浏览，加快打开
+* 缩放
+* 取色功能
+* 取色实时提示
+* 移动
+
+# TODO
+
+* 后端累积更新，比如每300ms更新一次此段时间的所有像素点变化

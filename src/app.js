@@ -47,14 +47,28 @@ async function main() {
 				ws.send(buf)
 			}
 		})
-		
+		//在线人数功能
+		wss.clients.forEach(ws => {
+			ws.send(JSON.stringify({
+				type:'onlineCount',
+				count:wss.clients.size,
+			}))
+		})
+
+		ws.on('close', () => {
+			wss.clients.forEach(ws => {
+				ws.send(JSON.stringify({
+					type:'onlineCount',
+					count:wss.clients.size,
+				}))
+			})
+		})
 		var lastDraw = 0
 	
 		ws.on('message', msg => {
 			msg = JSON.parse(msg)
 			var now = Date.now()
 			var {x, y, color} = msg
-			console.log('msg',msg)
 			//限制频繁绘制
 			if (msg.type == 'drawDot') {
 				if (now - lastDraw < 200) {
