@@ -41,10 +41,12 @@ async function main() {
 	//批量更新
 	let userOperations = []
 
-	setInterval(() => {
-		io.emit('updateDot', userOperations)
-		userOperations = []
-	}, 300)
+	if (userOperations.length) {
+		setInterval(() => {
+			io.emit('updateDot', userOperations)
+			userOperations = []
+		}, 300)
+	}
 
 	io.on('connection',(ws, req) => {
 		//首次连接发送buffer数据
