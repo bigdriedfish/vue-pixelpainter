@@ -22,6 +22,7 @@
 		.common-colors {
 			box-shadow: 0 0 5px grey;
 			border-radius: 5px;
+			width:max-content;
 		}
 		.color-card {
 			display: inline-block;
@@ -30,7 +31,8 @@
   		margin: 1px 4px;
 			border: 1px solid lightgray;
   		border-radius: 5px;
-  		cursor: pointer;
+			cursor: pointer;
+			vertical-align:bottom;
   		transform-origin: 50% 50%;
 		}
 		.color-card.active {
@@ -40,6 +42,7 @@
 </head>
 <body>
 	<div id="app">
+		<h1>PixelPainter</h1>
 		<div class="canvas-wrapper">
 			<canvas @mousewheel='handleZoom' @mousedown="prepareDrag" ref="canvas" :width="width" :height="height" style="top:0px;left:0px"></canvas>
 		</div>
@@ -99,6 +102,7 @@
 					if (Math.sqrt(diffX ** 2 + diffY ** 2) > 1) {
 						moved  = true
 					}
+					console.log(e)
 					canvas.removeEventListener('mousemove', moveHandler)
 					canvas.removeEventListener('mouseup', upHandler)
 					if (!moved) {
@@ -247,8 +251,8 @@
 			})
 
 			ws.on('onlineCount', data => {
-				console.log(data)
-				this.onlineCount = data.count
+				console.log('onlinecount',data)
+				this.onlineCount = data
 			})
 		}
 	})

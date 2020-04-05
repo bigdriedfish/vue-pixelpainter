@@ -1,7 +1,7 @@
 const http = require('http')
 const fs = require('fs')
 const path = require('path')
-const ws = require('ws')
+//const ws = require('ws')
 const express = require('express')
 const Jimp = require('jimp')
 const socketIO = require('socket.io')
@@ -19,7 +19,7 @@ main()
 
 async function main() {
 	let img 
-	
+	let onlineCount = 0
 
 	try {
 		img = await Jimp.read(path.join(__dirname, './pixel.png'))
@@ -49,6 +49,7 @@ async function main() {
 	}
 
 	io.on('connection',(ws, req) => {
+		onlineCount++
 		//首次连接发送buffer数据
 		img.getBuffer(Jimp.MIME_PNG, (err, buf) => {
 			if(err) {
@@ -58,14 +59,13 @@ async function main() {
 			}
 		})
 		//在线人数功能
-		io.emit('onlineCount',{
-			count:Object.keys(io.sockets.sockets).length,
-		})		
-		ws.on('close', () => {
-			io.emit('onlineCount',{
-				count:Object.keys(io.sockets.sockets).length,
-			})
+		ws.on('disconnect', () => {
+			//console.log(ws.disconnected)
+			if(ws.disconnected){
+				onlineCount--
+			}
 		})
+		io.emit('onlineCount',onlineCount)		
 		var lastDraw = 0
 	
 		ws.on('drawDot',data => {
